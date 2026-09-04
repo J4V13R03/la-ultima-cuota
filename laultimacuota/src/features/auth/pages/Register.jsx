@@ -36,7 +36,7 @@ function Register() {
     try {
       const result = await register(username.trim(), email.trim(), password);
       if (result.success) {
-        navigate('/');
+        navigate('/dashboard');
       } else {
         setError(result.message);
       }

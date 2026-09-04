@@ -24,7 +24,7 @@ function Login() {
     try {
       const result = await login(email.trim(), password);
       if (result.success) {
-        navigate('/');
+        navigate('/dashboard');
       } else {
         setError(result.message);
       }

@@ -19,7 +19,7 @@ const User = {
 
   findById: async (id) => {
     const result = await db.query(
-      'SELECT id, username, email, saldo, created_at FROM usuarios WHERE id = $1',
+      'SELECT id, username, email, saldo, ultima_recompensa_diaria, created_at FROM usuarios WHERE id = $1',
       [id]
     );
     return result.rows[0] || null;
@@ -33,6 +33,33 @@ const User = {
       [username, email, password_hash]
     );
     return result.rows[0];
+  },
+
+  updateSaldo: async (userId, amount, client) => {
+    const q = client || db;
+    const result = await q.query(
+      `UPDATE usuarios SET saldo = saldo + $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, saldo`,
+      [amount, userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  updateDailyClaim: async (userId, client) => {
+    const q = client || db;
+    const result = await q.query(
+      `UPDATE usuarios SET ultima_recompensa_diaria = NOW(), updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, ultima_recompensa_diaria`,
+      [userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  getSaldo: async (userId) => {
+    const result = await db.query('SELECT saldo FROM usuarios WHERE id = $1', [userId]);
+    return result.rows[0] ? result.rows[0].saldo : null;
   },
 };
 
