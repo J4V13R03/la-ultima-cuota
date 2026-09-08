@@ -123,7 +123,7 @@ const Caballo = {
 
   delete: async (id, propietario_id) => {
     const result = await db.query(
-      `DELETE FROM caballos WHERE id = $1 AND propietario_id = $2q
+      `DELETE FROM caballos WHERE id = $1 AND propietario_id = $2
        RETURNING id`,
       [id, propietario_id]
     );

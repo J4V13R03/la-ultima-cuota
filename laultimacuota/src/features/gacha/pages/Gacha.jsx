@@ -5,7 +5,7 @@ import { useAuth } from '../../../shared/context/AuthContext';
 import api from '../../../shared/services/api';
 
 function Gacha() {
-  const { user } = useAuth();
+  const { user, updateUserSaldo } = useAuth();
   const showToast = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -20,6 +20,7 @@ function Gacha() {
       if (response.data.success) {
         setResult(response.data.data);
         showToast(`Nuevo caballo: ${response.data.data.caballo.nombre}`, 'success');
+        updateUserSaldo(response.data.data.saldo);
       }
     } catch (err) {
       const msg = err.response?.data?.error || 'Error al realizar la tirada';

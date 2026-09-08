@@ -16,7 +16,7 @@ function formatTimeRemaining(seconds) {
 }
 
 function DailyRewardButton({ variant = 'success', size = 'sm', className = '' }) {
-  const { user } = useAuth();
+  const { user, updateUserSaldo } = useAuth();
   const showToast = useToast();
   const [status, setStatus] = useState({ available: false, retryAfter: 0, amount: 500 });
   const [loading, setLoading] = useState(false);
@@ -57,7 +57,7 @@ function DailyRewardButton({ variant = 'success', size = 'sm', className = '' })
       if (response.data.success) {
         showToast(`Reclamaste $${response.data.data.monto.toLocaleString('es-CL')} CC`, 'success');
         setStatus({ available: false, retryAfter: 86400, amount: response.data.data.monto });
-        window.location.reload();
+        updateUserSaldo(response.data.data.saldo);
       }
     } catch (err) {
       const msg = err.response?.data?.error || 'Error al reclamar';
