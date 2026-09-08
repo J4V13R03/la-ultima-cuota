@@ -19,14 +19,22 @@ export function SocketProvider({ children }) {
 
     const connect = () => {
       if (socketRef.current?.connected) return;
-      const socketUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+      const socketUrl = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:4000`;
       const socket = io(socketUrl, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+        reconnectionAttempts: 5,
       });
       socketRef.current = socket;
+
+      socket.on('connect_error', (err) => {
+        console.warn('[Socket] Error de conexión:', err.message);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('[Socket] Desconectado:', reason);
+      });
 
       socket.on('race_started', (data) => {
         if (data?.carrera_id) {

@@ -1,8 +1,9 @@
 const db = require('../config/db');
 
 const Caballo = {
-  create: async ({ propietario_id, nombre, edad, velocidad, resistencia, corazon }) => {
-    const result = await db.query(
+  create: async ({ propietario_id, nombre, edad, velocidad, resistencia, corazon }, client) => {
+    const q = client || db;
+    const result = await q.query(
       `INSERT INTO caballos (propietario_id, nombre, edad, velocidad, resistencia, corazon)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, propietario_id, nombre, edad, fatiga, carreras_totales, victorias, en_venta, created_at`,

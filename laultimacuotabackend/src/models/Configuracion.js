@@ -1,8 +1,9 @@
 const db = require('../config/db');
 
 const Configuracion = {
-  get: async (clave) => {
-    const result = await db.query(
+  get: async (clave, client) => {
+    const q = client || db;
+    const result = await q.query(
       'SELECT valor FROM configuracion WHERE clave = $1',
       [clave]
     );
@@ -23,8 +24,8 @@ const Configuracion = {
     return result.rows[0] || null;
   },
 
-  getNumeric: async (clave) => {
-    const val = await Configuracion.get(clave);
+  getNumeric: async (clave, client) => {
+    const val = await Configuracion.get(clave, client);
     return val !== null ? Number(val) : null;
   },
 };

@@ -36,7 +36,7 @@ function RaceSimulation() {
   useEffect(() => { fetchRace(); }, [fetchRace]);
 
   useEffect(() => {
-    const socketUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+    const socketUrl = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:4000`;
     const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
     socket.emit('join_race', Number(id));

@@ -31,7 +31,7 @@ const claimDaily = async (req, res) => {
       }
     }
 
-    const amount = await Configuracion.getNumeric('daily_reward_amount');
+    const amount = await Configuracion.getNumeric('daily_reward_amount', client);
     if (!amount || amount <= 0) {
       await client.query('ROLLBACK');
       return res.status(500).json({ success: false, error: 'Error en la configuracion del sistema' });

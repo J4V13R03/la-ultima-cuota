@@ -21,7 +21,7 @@ const pullHorse = async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const gachaCost = await Configuracion.getNumeric('gacha_cost');
+    const gachaCost = await Configuracion.getNumeric('gacha_cost', client);
     if (!gachaCost || gachaCost <= 0) {
       await client.query('ROLLBACK');
       return res.status(500).json({ success: false, error: 'Error en la configuracion del sistema' });
@@ -57,7 +57,7 @@ const pullHorse = async (req, res) => {
       velocidad,
       resistencia,
       corazon,
-    });
+    }, client);
 
     await Transaccion.create({
       usuario_id: req.user.id,

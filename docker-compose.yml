@@ -30,7 +30,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${POSTGRES_DB}
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
     depends_on:
       db:
         condition: service_healthy
@@ -38,12 +38,16 @@ services:
       - ./laultimacuotabackend/src:/app/src
 
   frontend:
-    build: ./laultimacuota
+    build:
+      context: ./laultimacuota
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL}
+      HOST: 0.0.0.0
+      REACT_APP_API_URL: ""
     depends_on:
       - backend
     volumes:
