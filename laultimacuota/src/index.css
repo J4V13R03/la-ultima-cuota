@@ -168,3 +168,68 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-contrast-dark);
 }
+
+/* Race simulation track */
+.race-track {
+  width: 800px;
+  height: 400px;
+  background-color: #2d5a27;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  border: 3px solid #1a3a15;
+}
+
+@media (max-width: 860px) {
+  .race-track {
+    width: 100%;
+    aspect-ratio: 2 / 1;
+  }
+}
+
+/* Toast animations */
+.toast {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Sidebar transitions */
+.sidebar-link {
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Horse card hover effect */
+.horse-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.horse-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26, 26, 26, 0.1);
+}
+
+/* Tab styling override */
+.nav-tabs .nav-link {
+  font-weight: 600;
+  color: var(--color-contrast-medium);
+  border-radius: 8px 8px 0 0;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}

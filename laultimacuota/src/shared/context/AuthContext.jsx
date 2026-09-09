@@ -48,7 +48,7 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return { success: true };
     }
-    return { success: false, message: data.message || 'Error al iniciar sesión' };
+    return { success: false, message: data.error || 'Error al iniciar sesión' };
   };
 
   const register = async (username, email, password) => {
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return { success: true };
     }
-    return { success: false, message: data.message || 'Error al registrarse' };
+    return { success: false, message: data.error || 'Error al registrarse' };
   };
 
   const logout = () => {
@@ -72,6 +72,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const updateUserSaldo = useCallback((newSaldo) => {
+    setUser((prev) => prev ? { ...prev, saldo: newSaldo } : prev);
+  }, []);
+
   const value = {
     user,
     token,
@@ -79,6 +83,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    updateUserSaldo,
     isAuthenticated: !!token && !!user,
   };
 
