@@ -63,25 +63,74 @@ const createRaceWithBots = async (offsetMinutes = 0) => {
 
 let ioRef = null;
 const activeRaces = new Map();
+const settlingRaces = new Set();
 
 const TRACK_WIDTH = 800;
 const HORSE_WIDTH = 40;
+const TRACK_LENGTH = 1000;
+const FINISH_PX = TRACK_WIDTH - HORSE_WIDTH;
+const SPEED_SCALE = 0.65;
 
 const startRaceSimulation = async (raceId) => {
   const inscriptions = await Race.findInscriptions(raceId);
   if (inscriptions.length === 0) return;
 
+  const horses = inscriptions.map((insc) => ({
+    caballo_id: insc.caballo_id,
+    velocidad: insc.velocidad || 50,
+    resistencia: insc.resistencia || 50,
+    corazon: insc.corazon || 50,
+    pos: 0,
+    finished: false,
+    finish_time: 0,
+  }));
+
+  const finishOrder = [];
   const positions = {};
-  inscriptions.forEach((insc) => { positions[insc.caballo_id] = 0; });
+  horses.forEach((h) => { positions[h.caballo_id] = 0; });
 
   const startTime = Date.now();
   const tick = () => {
     const elapsed = (Date.now() - startTime) / 1000;
+    const finishedThisTick = [];
 
-    Object.keys(positions).forEach((key) => {
-      if (positions[key] >= TRACK_WIDTH - HORSE_WIDTH) return;
-      const speed = (Math.random() * 10 + 3) * 2;
-      positions[key] = Math.min(positions[key] + speed, TRACK_WIDTH - HORSE_WIDTH);
+    for (const h of horses) {
+      if (h.finished) continue;
+
+      const rngMove = Math.random() * 60 + 40;
+      const speedBonus = rngMove * (h.velocidad / 500);
+
+      const boostChance = 0.05 + (h.corazon * 0.001);
+      const boostMult = Math.random() < boostChance ? 1.5 : 1.0;
+
+      let fatigueMult = 1.0;
+      if (h.pos > 700) {
+        const tireChance = 1.0 - (h.resistencia / 120.0);
+        if (Math.random() < tireChance) fatigueMult = 0.7;
+      }
+
+      const step = (rngMove + speedBonus) * boostMult * fatigueMult * SPEED_SCALE;
+      const rawPos = h.pos + step;
+
+      if (rawPos >= TRACK_LENGTH) {
+        h.pos = TRACK_LENGTH;
+        h.finished = true;
+        const overshoot = rawPos - TRACK_LENGTH;
+        const timeCorrection = step > 0 ? overshoot / step : 0;
+        h.finish_time = Math.round((elapsed - timeCorrection) * 100) / 100;
+        finishedThisTick.push(h);
+      } else {
+        h.pos = rawPos;
+      }
+    }
+
+    if (finishedThisTick.length > 0) {
+      finishedThisTick.sort((a, b) => a.finish_time - b.finish_time);
+      finishOrder.push(...finishedThisTick);
+    }
+
+    horses.forEach((h) => {
+      positions[h.caballo_id] = Math.round((h.pos / TRACK_LENGTH) * FINISH_PX);
     });
 
     if (ioRef) {
@@ -92,16 +141,16 @@ const startRaceSimulation = async (raceId) => {
       });
     }
 
-    const allFinished = Object.values(positions).every((p) => p >= TRACK_WIDTH - HORSE_WIDTH);
-    if (allFinished) {
+    if (finishOrder.length === horses.length) {
       clearInterval(intervalId);
       activeRaces.delete(raceId);
       console.log(`[Simulation] Carrera #${raceId} terminada en ${Math.round(elapsed)}s`);
+      settleRace(raceId, finishOrder);
     }
   };
 
   const intervalId = setInterval(tick, 1000);
-  activeRaces.set(raceId, { intervalId, positions, startTime });
+  activeRaces.set(raceId, { intervalId, positions, startTime, horses, finishOrder });
   console.log(`[Simulation] Carrera #${raceId} simulación iniciada`);
 };
 
@@ -183,131 +232,160 @@ const transitionRaces = async () => {
     const raceDuration = await Configuracion.getNumeric('race_duration_seconds');
 
     for (const race of toFinish.rows) {
+      if (activeRaces.has(race.id)) continue;
+
       const startTime = new Date(race.fecha_inicio_real);
       const elapsed = (now.getTime() - startTime.getTime()) / 1000;
 
       if (elapsed >= (raceDuration || 30)) {
-        const existingResults = await Race.getResults(race.id);
-        if (existingResults.length > 0) {
-          await Race.updateEstado(race.id, 'finalizada');
-          continue;
-        }
-
-        const inscriptions = await Race.findInscriptions(race.id);
-        if (inscriptions.length > 0) {
-          const results = simulateResults(inscriptions);
-          await Race.finishRace(race.id, results, null);
-
-          if (race.tiene_interaccion_humana) {
-            const commissionPct = await Configuracion.getNumeric('owner_commission_pct');
-
-            const pendingBets = await Race.getPendingBets(race.id);
-            const winnerHorseId = results[0].caballo_id;
-
-            const totalPool = pendingBets.reduce((sum, b) => sum + Number(b.monto), 0);
-            const winnerPool = pendingBets
-              .filter((b) => b.caballo_id === winnerHorseId)
-              .reduce((sum, b) => sum + Number(b.monto), 0);
-
-            let totalHumanWinnings = 0;
-
-            for (const bet of pendingBets) {
-              if (bet.usuario_id === null) {
-                await db.query(
-                  `UPDATE apuestas SET estado = $1 WHERE id = $2`,
-                  [bet.caballo_id === winnerHorseId ? 'ganada' : 'perdida', bet.id]
-                );
-                continue;
-              }
-
-              const client2 = await db.getClient();
-              try {
-                await client2.query('BEGIN');
-
-                if (bet.caballo_id === winnerHorseId) {
-                  const winAmount = winnerPool > 0
-                    ? (Number(bet.monto) * totalPool / winnerPool)
-                    : 0;
-
-                  totalHumanWinnings += winAmount;
-
-                  await db.query(
-                    `UPDATE apuestas SET estado = 'ganada', monto_ganado = $1 WHERE id = $2`,
-                    [winAmount, bet.id]
-                  );
-
-                  const updatedUser = await User.updateSaldo(bet.usuario_id, winAmount, client2);
-
-                  await Transaccion.create({
-                    usuario_id: bet.usuario_id,
-                    tipo: 'apuesta_ganada',
-                    monto: winAmount,
-                    saldo_resultante: updatedUser.saldo,
-                    referencia_tabla: 'carreras',
-                    referencia_id: race.id,
-                  }, client2);
-                } else {
-                  await db.query(
-                    `UPDATE apuestas SET estado = 'perdida' WHERE id = $1`,
-                    [bet.id]
-                  );
-                }
-
-                await client2.query('COMMIT');
-              } catch (err) {
-                await client2.query('ROLLBACK');
-                console.error('[Settlement] Error procesando apuesta:', err.message);
-              } finally {
-                client2.release();
-              }
-            }
-
-            const winnerInscription = inscriptions.find((i) => i.caballo_id === winnerHorseId);
-            if (winnerInscription && winnerInscription.usuario_id) {
-              const commission = totalHumanWinnings * (commissionPct || 10) / 100;
-
-              if (commission > 0) {
-                const ownerClient = await db.getClient();
-                try {
-                  await ownerClient.query('BEGIN');
-                  const updatedOwner = await User.updateSaldo(winnerInscription.usuario_id, commission, ownerClient);
-                  await Transaccion.create({
-                    usuario_id: winnerInscription.usuario_id,
-                    tipo: 'comision_dueno',
-                    monto: commission,
-                    saldo_resultante: updatedOwner.saldo,
-                    referencia_tabla: 'carreras',
-                    referencia_id: race.id,
-                  }, ownerClient);
-                  await ownerClient.query('COMMIT');
-                } catch (err) {
-                  await ownerClient.query('ROLLBACK');
-                  console.error('[Settlement] Error pagando comision:', err.message);
-                } finally {
-                  ownerClient.release();
-                }
-              }
-            }
-
-            for (const r of results) {
-              const wins = r.posicion === 1 ? 1 : 0;
-              await Caballo.incrementStats(r.caballo_id, wins, 1, r.posicion);
-            }
-
-            await Race.updateEstado(race.id, 'finalizada');
-            console.log(`[Scheduler] Carrera #${race.id} finalizada`);
-          } else {
-            await Race.deleteRace(race.id);
-            console.log(`[Scheduler] Carrera #${race.id} eliminada (solo bots)`);
-          }
-        } else {
-          await Race.deleteRace(race.id);
-          console.log(`[Scheduler] Carrera #${race.id} eliminada (sin inscripciones)`);
-        }
+        await settleRace(race.id, null);
       }
     }
   } catch (err) {
     console.error('[Scheduler] Error en transiciones:', err.message);
+  }
+};
+
+const settleRace = async (raceId, finishOrder = null) => {
+  if (settlingRaces.has(raceId)) return;
+  settlingRaces.add(raceId);
+
+  try {
+    const race = await Race.findById(raceId);
+    if (!race) return;
+
+    const existingResults = await Race.getResults(raceId);
+    if (existingResults.length > 0) {
+      if (race.estado !== 'finalizada') {
+        await Race.updateEstado(raceId, 'finalizada');
+      }
+      return;
+    }
+
+    const inscriptions = await Race.findInscriptions(raceId);
+    if (inscriptions.length === 0) {
+      await Race.deleteRace(raceId);
+      console.log(`[Scheduler] Carrera #${raceId} eliminada (sin inscripciones)`);
+      return;
+    }
+
+    const results = finishOrder
+      ? finishOrder.map((h, idx) => ({
+          caballo_id: h.caballo_id,
+          posicion: idx + 1,
+          tiempo: h.finish_time.toFixed(2),
+        }))
+      : simulateResults(inscriptions);
+
+    await Race.finishRace(raceId, results, null);
+
+    if (!race.tiene_interaccion_humana) {
+      await Race.deleteRace(raceId);
+      console.log(`[Scheduler] Carrera #${raceId} eliminada (solo bots)`);
+      return;
+    }
+
+    const commissionPct = await Configuracion.getNumeric('owner_commission_pct');
+
+    const pendingBets = await Race.getPendingBets(raceId);
+    const winnerHorseId = results[0].caballo_id;
+
+    const totalPool = pendingBets.reduce((sum, b) => sum + Number(b.monto), 0);
+    const winnerPool = pendingBets
+      .filter((b) => b.caballo_id === winnerHorseId)
+      .reduce((sum, b) => sum + Number(b.monto), 0);
+
+    let totalHumanWinnings = 0;
+
+    for (const bet of pendingBets) {
+      if (bet.usuario_id === null) {
+        await db.query(
+          `UPDATE apuestas SET estado = $1 WHERE id = $2`,
+          [bet.caballo_id === winnerHorseId ? 'ganada' : 'perdida', bet.id]
+        );
+        continue;
+      }
+
+      const client2 = await db.getClient();
+      try {
+        await client2.query('BEGIN');
+
+        if (bet.caballo_id === winnerHorseId) {
+          const winAmount = winnerPool > 0
+            ? (Number(bet.monto) * totalPool / winnerPool)
+            : 0;
+
+          totalHumanWinnings += winAmount;
+
+          await db.query(
+            `UPDATE apuestas SET estado = 'ganada', monto_ganado = $1 WHERE id = $2`,
+            [winAmount, bet.id]
+          );
+
+          const updatedUser = await User.updateSaldo(bet.usuario_id, winAmount, client2);
+
+          await Transaccion.create({
+            usuario_id: bet.usuario_id,
+            tipo: 'apuesta_ganada',
+            monto: winAmount,
+            saldo_resultante: updatedUser.saldo,
+            referencia_tabla: 'carreras',
+            referencia_id: raceId,
+          }, client2);
+        } else {
+          await db.query(
+            `UPDATE apuestas SET estado = 'perdida' WHERE id = $1`,
+            [bet.id]
+          );
+        }
+
+        await client2.query('COMMIT');
+      } catch (err) {
+        await client2.query('ROLLBACK');
+        console.error('[Settlement] Error procesando apuesta:', err.message);
+      } finally {
+        client2.release();
+      }
+    }
+
+    const winnerInscription = inscriptions.find((i) => i.caballo_id === winnerHorseId);
+    if (winnerInscription && winnerInscription.usuario_id) {
+      const commission = totalHumanWinnings * (commissionPct || 10) / 100;
+
+      if (commission > 0) {
+        const ownerClient = await db.getClient();
+        try {
+          await ownerClient.query('BEGIN');
+          const updatedOwner = await User.updateSaldo(winnerInscription.usuario_id, commission, ownerClient);
+          await Transaccion.create({
+            usuario_id: winnerInscription.usuario_id,
+            tipo: 'comision_dueno',
+            monto: commission,
+            saldo_resultante: updatedOwner.saldo,
+            referencia_tabla: 'carreras',
+            referencia_id: raceId,
+          }, ownerClient);
+          await ownerClient.query('COMMIT');
+        } catch (err) {
+          await ownerClient.query('ROLLBACK');
+          console.error('[Settlement] Error pagando comision:', err.message);
+        } finally {
+          ownerClient.release();
+        }
+      }
+    }
+
+    for (const r of results) {
+      const wins = r.posicion === 1 ? 1 : 0;
+      await Caballo.incrementStats(r.caballo_id, wins, 1, r.posicion);
+    }
+
+    await Race.updateEstado(raceId, 'finalizada');
+    console.log(`[Scheduler] Carrera #${raceId} finalizada`);
+  } catch (err) {
+    console.error(`[Settlement] Error liquidando carrera #${raceId}:`, err.message);
+  } finally {
+    settlingRaces.delete(raceId);
   }
 };
 

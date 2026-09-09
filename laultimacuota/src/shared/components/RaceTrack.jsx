@@ -1,6 +1,7 @@
 import React from 'react';
 
 const LANE_HEIGHT = 44;
+const FINISH_PX = 760;
 const LANE_COLORS = ['#15BD0F', '#0d6efd', '#fd7e14', '#dc3545', '#6f42c1', '#20c997', '#e83e8c', '#ffc107', '#17a2b8', '#343a40', '#007bff', '#28a745'];
 
 function RaceTrack({ inscriptions = [], positions = {} }) {
@@ -64,6 +65,7 @@ function RaceTrack({ inscriptions = [], positions = {} }) {
           const pos = positions[insc.caballo_id] || 0;
           const laneTop = idx * LANE_HEIGHT + 8 + (LANE_HEIGHT - 28) / 2;
           const color = LANE_COLORS[idx % LANE_COLORS.length];
+          const finished = pos >= FINISH_PX;
           return (
             <div
               key={insc.caballo_id || idx}
@@ -78,6 +80,19 @@ function RaceTrack({ inscriptions = [], positions = {} }) {
                 zIndex: 2,
               }}
             >
+              <span
+                className="fw-bold"
+                style={{
+                  fontSize: '0.72rem',
+                  color: finished ? '#fff' : '#333',
+                  whiteSpace: 'nowrap',
+                  backgroundColor: finished ? '#15BD0F' : 'rgba(255,255,255,0.85)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                {insc.caballo_nombre || insc.nombre || `Caballo ${insc.caballo_id}`}
+              </span>
               <span
                 style={{
                   display: 'inline-flex',
@@ -95,19 +110,6 @@ function RaceTrack({ inscriptions = [], positions = {} }) {
                 }}
               >
                 {idx + 1}
-              </span>
-              <span
-                className="fw-bold"
-                style={{
-                  fontSize: '0.72rem',
-                  color: '#333',
-                  whiteSpace: 'nowrap',
-                  backgroundColor: 'rgba(255,255,255,0.85)',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                }}
-              >
-                {insc.caballo_nombre || insc.nombre || `Caballo ${insc.caballo_id}`}
               </span>
             </div>
           );

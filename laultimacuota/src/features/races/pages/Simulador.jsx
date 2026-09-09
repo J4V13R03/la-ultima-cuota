@@ -4,6 +4,7 @@ import { Container, Card, Button, Row, Col, Form } from 'react-bootstrap';
 const TRACK_WIDTH = 800;
 const LANE_HEIGHT = 44;
 const HORSE_WIDTH = 36;
+const FINISH_PX = TRACK_WIDTH - HORSE_WIDTH - 20;
 
 const MOCK_HORSES = [
   'Huaso del Sur', 'Poncho Rojo', 'Chacarero Veloz', 'Diablo del Ranco',
@@ -246,6 +247,7 @@ function Simulador() {
               const pos = positions[idx] || 0;
               const laneTop = idx * LANE_HEIGHT + 8 + (LANE_HEIGHT - 28) / 2;
               const color = getColor(idx);
+              const finished = pos >= FINISH_PX;
               return (
                 <div
                   key={idx}
@@ -260,6 +262,20 @@ function Simulador() {
                     zIndex: 2,
                   }}
                 >
+                  <span
+                    className="fw-bold"
+                    style={{
+                      fontSize: '0.72rem',
+                      color: finished ? '#fff' : '#333',
+                      textShadow: finished ? 'none' : '0 0 4px rgba(255,255,255,0.8)',
+                      whiteSpace: 'nowrap',
+                      backgroundColor: finished ? '#15BD0F' : 'rgba(255,255,255,0.85)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    {name}
+                  </span>
                   <span
                     style={{
                       display: 'inline-flex',
@@ -277,20 +293,6 @@ function Simulador() {
                     }}
                   >
                     {idx + 1}
-                  </span>
-                  <span
-                    className="fw-bold"
-                    style={{
-                      fontSize: '0.72rem',
-                      color: '#333',
-                      textShadow: '0 0 4px rgba(255,255,255,0.8)',
-                      whiteSpace: 'nowrap',
-                      backgroundColor: 'rgba(255,255,255,0.85)',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    {name}
                   </span>
                 </div>
               );
