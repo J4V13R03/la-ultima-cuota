@@ -1,6 +1,7 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import NavigationBar from './Navbar';
+import ViernesWidget from '../../features/assistant/components/ViernesWidget';
 
 function DashboardLayout({ children }) {
   return (
@@ -12,6 +13,7 @@ function DashboardLayout({ children }) {
           {children}
         </main>
       </div>
+      <ViernesWidget />
     </div>
   );
 }

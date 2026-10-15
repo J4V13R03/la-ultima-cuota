@@ -11,6 +11,7 @@ const gachaRoutes = require('./routes/gacha');
 const stableRoutes = require('./routes/stable');
 const marketRoutes = require('./routes/market');
 const historyRoutes = require('./routes/history');
+const assistantRoutes = require('./routes/assistant');
 const { startScheduler, getRacePositions } = require('./workers/raceScheduler');
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/gacha', gachaRoutes);
 app.use('/api/stable', stableRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: 'Ruta no encontrada' });

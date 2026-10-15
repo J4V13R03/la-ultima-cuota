@@ -233,3 +233,113 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
   border-color: var(--color-primary);
 }
+
+/* VIERNES — widget flotante del asistente (solo layout privado) */
+.viernes-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(21, 189, 15, 0.35);
+  z-index: 1050;
+  padding: 0;
+}
+
+.viernes-fab:hover {
+  background-color: #129e0c !important;
+  border-color: #129e0c !important;
+  color: #fff !important;
+}
+
+.viernes-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 380px;
+  height: 520px;
+  max-height: calc(100vh - 48px);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1050;
+}
+
+.viernes-panel-encabezado {
+  background-color: var(--color-contrast-dark);
+  color: #fff;
+  border-bottom: none;
+  font-family: var(--font-heading);
+}
+
+.viernes-panel-subtitulo {
+  color: var(--color-soft);
+}
+
+.viernes-panel-lista {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--color-bg-light);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viernes-mensaje {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.viernes-mensaje-asistente {
+  align-self: flex-start;
+  background-color: #fff;
+  color: var(--color-text-dark);
+  border: 1px solid rgba(100, 43, 43, 0.12);
+}
+
+.viernes-mensaje-usuario {
+  align-self: flex-end;
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.viernes-error {
+  align-self: stretch;
+  background-color: #fdecea;
+  color: var(--color-contrast-dark);
+  border: 1px solid rgba(100, 43, 43, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.viernes-panel-pie {
+  background-color: #fff;
+  border-top: 1px solid rgba(100, 43, 43, 0.12);
+}
+
+@media (max-width: 480px) {
+  .viernes-panel {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    height: calc(100vh - 24px);
+  }
+
+  .viernes-fab {
+    right: 16px;
+    bottom: 16px;
+  }
+}
